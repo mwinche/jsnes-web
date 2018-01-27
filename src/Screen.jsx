@@ -8,6 +8,7 @@ class Screen extends Component {
         className="Screen"
         width="256"
         height="240"
+        style={{ height: '85%' }}
         onMouseDown={this.handleMouseDown}
         onMouseUp={this.props.onMouseUp}
         ref={canvas => {
@@ -58,18 +59,18 @@ class Screen extends Component {
   };
 
   fitInParent = () => {
-    let parent = this.canvas.parentNode;
-    let parentWidth = parent.clientWidth;
-    let parentHeight = parent.clientHeight;
-    let parentRatio = parentWidth / parentHeight;
-    let desiredRatio = 256 / 240;
-    if (desiredRatio < parentRatio) {
-      this.canvas.style.width = `${Math.round(parentHeight * desiredRatio)}px`;
-      this.canvas.style.height = `${parentHeight}px`;
-    } else {
-      this.canvas.style.width = `${parentWidth}px`;
-      this.canvas.style.height = `${Math.round(parentWidth / desiredRatio)}px`;
-    }
+    // let parent = this.canvas.parentNode;
+    // let parentWidth = parent.clientWidth;
+    // let parentHeight = parent.clientHeight;
+    // let parentRatio = parentWidth / parentHeight;
+    // let desiredRatio = 256 / 240;
+    // if (desiredRatio < parentRatio) {
+    //   this.canvas.style.width = `${Math.round(parentHeight * desiredRatio)}px`;
+    //   this.canvas.style.height = `${parentHeight}px`;
+    // } else {
+    //   this.canvas.style.width = `${parentWidth}px`;
+    //   this.canvas.style.height = `${Math.round(parentWidth / desiredRatio)}px`;
+    // }
   };
 
   screenshot() {

@@ -5,10 +5,12 @@ import "./RunPage.css";
 import config from "./config";
 import ControlsModal from "./ControlsModal";
 import FrameTimer from "./FrameTimer";
-import KeyboardController from "./KeyboardController";
 import Screen from "./Screen";
 import Speakers from "./Speakers";
 import { NES } from "jsnes";
+import NESController from './NESController';
+
+import mappings, { KEYBOARD, gamepad } from './Mappings';
 
 function loadBinary(path, callback) {
   var req = new XMLHttpRequest();
@@ -35,6 +37,9 @@ class RunPage extends Component {
       paused: false,
       controlsModal: false
     };
+
+    this.keyDown = this.keyDown.bind(this);
+    this.keyUp = this.keyUp.bind(this);
   }
 
   render() {
@@ -94,6 +99,9 @@ class RunPage extends Component {
               this.nes.zapperFireUp();
             }}
           />
+          <div style={{ height: '10%' }}>
+            <NESController />
+          </div>
           <ControlsModal
             isOpen={this.state.controlsModal}
             toggle={this.toggleControlsModal}
@@ -101,6 +109,28 @@ class RunPage extends Component {
         </div>
       </div>
     );
+  }
+
+  keyUp(event){
+    const { keyCode } = event;
+    const button = mappings.getButtonFromKey(KEYBOARD, keyCode);
+
+    button && this.nes.buttonUp(...button);
+
+    event.preventDefault();
+  }
+
+  keyDown(event){
+    const { keyCode } = event;
+    const button = mappings.getButtonFromKey(KEYBOARD, keyCode);
+
+    button && this.nes.buttonDown(...button);
+
+    event.preventDefault();
+  }
+
+  preventDefault(event){
+    event.preventDefault();
   }
 
   componentDidMount() {
@@ -117,22 +147,22 @@ class RunPage extends Component {
         //   done by audio instead of requestAnimationFrame.
         // - System can't run emulator at full speed. In this case it'll stop
         //    firing requestAnimationFrame.
-        console.log(
-          "Buffer underrun, running another frame to try and catch up"
-        );
+        // console.log(
+        //   "Buffer underrun, running another frame to try and catch up"
+        // );
         this.nes.frame();
         // desiredSize will be 2048, and the NES produces 1468 samples on each
         // frame so we might need a second frame to be run. Give up after that
         // though -- the system is not catching up
         if (this.speakers.buffer.size() < desiredSize) {
-          console.log("Still buffer underrun, running a second frame");
+          // console.log("Still buffer underrun, running a second frame");
           this.nes.frame();
         }
       }
     });
     this.nes = new NES({
       onFrame: this.screen.setBuffer,
-      onStatusUpdate: console.log,
+      onStatusUpdate: () => {} /*console.log*/,
       onAudioSample: this.speakers.writeSample
     });
 
@@ -141,16 +171,29 @@ class RunPage extends Component {
       onWriteFrame: this.screen.writeBuffer
     });
 
-    this.keyboardController = new KeyboardController({
-      onButtonDown: this.nes.buttonDown,
-      onButtonUp: this.nes.buttonUp
+    
+    const checkGamepads = () => Array.from(navigator.getGamepads()).forEach((controller, gamepadIndex) => {
+      if(!controller) { return; }
+
+      controller.buttons.forEach(({ pressed }, buttonIndex) => {
+        const nesButton = mappings.getButtonFromKey(gamepad(gamepadIndex), buttonIndex);
+        
+        if(!nesButton) { return; }
+
+        if(pressed){
+          this.nes.buttonDown(...nesButton);
+        }
+        else{
+          this.nes.buttonUp(...nesButton);
+        }
+      });
     });
-    document.addEventListener("keydown", this.keyboardController.handleKeyDown);
-    document.addEventListener("keyup", this.keyboardController.handleKeyUp);
-    document.addEventListener(
-      "keypress",
-      this.keyboardController.handleKeyPress
-    );
+
+    setInterval(checkGamepads, 16);
+    
+    document.addEventListener("keydown", this.keyDown);
+    document.addEventListener("keyup", this.keyUp);
+    document.addEventListener("keypress", this.preventDefault);
 
     window.addEventListener("resize", this.layout);
     this.layout();
@@ -160,15 +203,9 @@ class RunPage extends Component {
 
   componentWillUnmount() {
     this.stop();
-    document.removeEventListener(
-      "keydown",
-      this.keyboardController.handleKeyDown
-    );
-    document.removeEventListener("keyup", this.keyboardController.handleKeyUp);
-    document.removeEventListener(
-      "keypress",
-      this.keyboardController.handleKeyPress
-    );
+    document.removeEventListener("keydown", this.keyDown);
+    document.removeEventListener("keyup", this.keyUp);
+    document.removeEventListener("keypress", this.preventDefault);
     window.removeEventListener("resize", this.layout);
   }
 
@@ -203,7 +240,7 @@ class RunPage extends Component {
     this.frameTimer.start();
     this.speakers.start();
     this.fpsInterval = setInterval(() => {
-      console.log(`FPS: ${this.nes.getFPS()}`);
+      //console.log(`FPS: ${this.nes.getFPS()}`);
     }, 1000);
   };
 
